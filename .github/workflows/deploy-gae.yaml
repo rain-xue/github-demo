@@ -1,0 +1,102 @@
+name: 'Deploy 🚀 Graphql Server'
+
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy-unstable:
+    name: Deploy to Unstable Server
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: checkout
+        name: Checkout repo
+        uses: actions/checkout@v3
+
+      - id: auth
+        name: 'Authenticate gcloud'
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          token_format: 'access_token'
+
+      - name: Get public IP
+        id: get_ip
+        uses: haythem/public-ip@v1.2
+
+      - name: 'Check status'
+        id: status_check
+        uses: indiesdev/curl@v1.1
+        with:
+          url: https://sqladmin.googleapis.com/v1/projects/resvu-dev-au/instances/development-db-au?fields=settings
+          bearer-token: ${{ steps.auth.outputs.access_token }}
+          timeout: 5000
+          log-response: true
+
+      - name: 'Authorize ip address'
+        id: authorize_network
+        uses: indiesdev/curl@v1.1
+        with:
+          url: https://sqladmin.googleapis.com/v1/projects/resvu-dev-au/instances/development-db-au
+          method: 'PATCH'
+          bearer-token: ${{ steps.auth.outputs.access_token }}
+          headers: '{ "Content-Type": "application/json; charset=utf-8" }'
+          body: '{"settings":{"ipConfiguration":{"authorizedNetworks":[{"value": "${{ steps.get_ip.outputs.ipv4 }}"}]}}}'
+          timeout: 10000
+          log-response: true
+
+      # - name: 'Remove ip address'
+      #   id: remove_network
+      #   uses: indiesdev/curl@v1.1
+      #   with:
+      #     url: https://sqladmin.googleapis.com/v1/projects/resvu-dev-au/instances/development-db-au
+      #     method: 'PATCH'
+      #     bearer-token: ${{ steps.auth.outputs.access_token }}
+      #     headers: '{ "Content-Type": "application/json; charset=utf-8" }'
+      #     body: '{"settings":{"ipConfiguration":{"authorizedNetworks":[]}}}'
+      #     timeout: 10000
+      #     log-response: true
+
+      - name: 'Generate service account file'
+        id: generate_fb_sa_key
+        run: 'echo "$FB_SA_KEY" > ./service-account.json'
+        shell: bash
+        env:
+          FB_SA_KEY: ${{secrets.FB_SA_KEY}}
+
+      - name: 'Start build'
+        id: build
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+
+      - name: 'Get dependencies'
+        run: yarn install
+
+      - name: 'Generate GraphQL files'
+        run: yarn schema:generate
+
+      - name: 'Generate prisma client'
+        run: yarn prisma:generate
+
+      - name: 'Build application'
+        run: yarn build
+
+      - name: 'Deploy database migrations'
+        run: yarn migrate:deploy
+        env:
+          DATABASE_URL: ${{secrets.DATABASE_URL}}
+
+      - id: deploy
+        name: 'Deploy to App Angine'
+        uses: google-github-actions/deploy-appengine@v0
+
+      - name: 'Publish GraphQL schema'
+        run: yarn schema:publish
+        env:
+          APOLLO_KEY: ${{ secrets.APOLLO_KEY }}
