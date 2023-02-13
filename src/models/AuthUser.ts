@@ -2,8 +2,10 @@ import { validate } from "graphql";
 import * as Sequelize from "sequelize";
 import { DataTypes, Model, Optional, Op, ModelStatic } from "sequelize";
 import { Account } from "./Account";
-import { useEncryptedPassword } from "./concerns/passwordable";
+import { verifyPassword, useEncryptedPassword } from "./concerns/passwordable";
 import { User, UserId } from "./User";
+import jwt from "jsonwebtoken";
+import bcrypt = require("bcrypt");
 
 export interface AuthUserAttributes {
   id: number;
@@ -52,19 +54,34 @@ export class AuthUser
   hasUsers!: Sequelize.HasManyHasAssociationsMixin<User, UserId>;
   countUsers!: Sequelize.HasManyCountAssociationsMixin;
 
-  static async authenticate(
-    client: string,
-    token: string,
-    uid: string
-  ): Promise<AuthUser> | null {
+  static async authenticate(token: string, uid: string): Promise<AuthUser> {
     const authUser = await AuthUser.findOne({
       where: {
         id: { [Sequelize.Op.eq]: uid },
         tokens: {
-          [Sequelize.Op.contains]: [`client: ${client} token: ${token}`],
+          [Sequelize.Op.contains]: [token],
         },
       },
     });
+
+    return authUser;
+  }
+
+  static async authenticateByPassword(
+    email: string,
+    password: string
+  ): Promise<AuthUser> {
+    const authUser = await AuthUser.findOne({
+      where: {
+        email: email,
+      },
+    });
+
+    const validPassword = verifyPassword(password, authUser.password);
+
+    if (!validPassword) {
+      throw new Error("Email or password is invalid");
+    }
 
     return authUser;
   }
@@ -106,7 +123,8 @@ export class AuthUser
           },
         },
         tokens: {
-          type: DataTypes.ARRAY,
+          type: DataTypes.ARRAY(DataTypes.STRING),
+          defaultValue: [],
         },
         confirmed: {
           type: DataTypes.BOOLEAN,
@@ -126,18 +144,6 @@ export class AuthUser
         },
       },
       {
-        scopes: {
-          confirmed: {
-            where: {
-              confirmed: true,
-            },
-          },
-        },
-        hooks: {
-          afterCreate: (authUser, options) => {
-            //TODO send email
-          },
-        },
         sequelize,
         tableName: "AuthUsers",
         schema: "public",
@@ -147,14 +153,26 @@ export class AuthUser
 
     useEncryptedPassword(AuthUser);
 
-    AuthUser.addHook("afterCreate", "sendEmailToUser", (authUser, options) => {
-      //TODO send user email
-    });
-
-    AuthUser.addHook("afterCreate", "sendEmailToAdmin", (authUser, options) => {
-      //TODO send admin email
-    });
-
     return AuthUser;
+  }
+
+  async refreshToken(): Promise<{
+    token: string;
+    uid: number;
+  }> {
+    //example
+    const newToken = jwt.sign({ id: this.id }, "secret");
+    const uid = this.id;
+    const newTokens = this.tokens.concat(newToken);
+
+    await this.update({ tokens: newTokens }, { where: { id: this.id } });
+
+    return { token: newToken, uid: uid };
+  }
+
+  async revokeToken(removedToken: string): Promise<boolean> {
+    const newTokens = this.tokens.filter((token) => token == removedToken);
+    await this.update({ tokens: newTokens });
+    return true;
   }
 }

@@ -1,23 +1,31 @@
-import { Op } from 'sequelize';
-import { AuthUser } from '../models';
-import { ApolloResponseError } from '../utils/error-handler';
-// import { redisClient } from '..';
-import { ContextObject } from './context';
+import { ApolloResponseError } from "../utils/error-handler";
+import { ContextObject } from "./context";
+import { validateToken } from "./authentication";
+import { IncomingHttpHeaders } from "http";
 
-import { validateToken } from './authentication';
-// import { authoriseUser } from './authorization';
-export async function GetValidContext(
-  headers: {[key: string]: string},
-): Promise<ContextObject> {
+interface CustomHttpHeaders extends IncomingHttpHeaders {
+  uid?: string;
+  client?: string;
+}
 
-  const token = headers.token;
-  const uid = headers.uid;
-  const client = headers.client
-
+export async function GetContext(args: {
+  headers: CustomHttpHeaders;
+}): Promise<ContextObject> {
   try {
-    const bearerToken = token.replace('Bearer ', '');
+    const { headers } = args;
 
-    const authUser = await validateToken({token: bearerToken, uid: uid, client: client});
+    const token = headers.authorization;
+    const uid = headers.uid;
+
+    let authUser = null;
+
+    if (token) {
+      const bearerToken = token.replace("Bearer ", "");
+      authUser = await validateToken({
+        token: bearerToken,
+        uid: uid,
+      });
+    }
 
     return { authUser };
   } catch (e) {

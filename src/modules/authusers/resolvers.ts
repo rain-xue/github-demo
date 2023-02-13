@@ -1,44 +1,62 @@
-import { Account, AuthUser, User } from '../../models/init-models';
-import { SignInInput } from '../../generated/graphql-types';
-import { ContextObject } from '../../utils/context'
-import { ApolloResponseError } from '../../utils/error-handler';
+import { Account, AuthUser, User } from "../../models/init-models";
+import { SignInInput, SignUpInput } from "../../generated/graphql-types";
+import { ContextObject } from "../../middleware/context";
+import { ApolloResponseError } from "../../utils/error-handler";
+import { response } from "express";
 
 export const authUsersResolvers = {
   Mutation: {
     signIn,
     signOut,
+    signUp,
   },
-  Query: {}
+  Query: {},
 };
+
+async function signUp(root: any, { input }, context: ContextObject) {
+  try {
+    const { email, password } = input as SignUpInput;
+
+    const authUser = await AuthUser.create({
+      email: email,
+      password: password,
+    });
+
+    if (!authUser) {
+      throw new ApolloResponseError("Invalid User", "UNAUTHORIZED");
+    }
+
+    const { token, uid } = await authUser.refreshToken();
+
+    return { token: token, uid: uid, success: true };
+  } catch (e) {
+    throw new ApolloResponseError(e.message);
+  }
+}
 
 async function signIn(root: any, { input }, context: ContextObject) {
   const { email, password } = input as SignInInput;
 
-  const newUser = await AuthUser.create({email: email, password: password})
+  const authUser = await AuthUser.authenticateByPassword(email, password);
 
-  console.log(await User.findAll())
-
-  const authUser = await AuthUser.findOne({ where: { email: email } });
-
-  console.log(await authUser.getUsers())
-
-  if(!authUser){
-    throw new ApolloResponseError('Invalid User', "UNAUTHORIZED");
+  if (!authUser) {
+    throw new ApolloResponseError("Invalid User", "UNAUTHORIZED");
   }
 
-  //TODO validate password
-  const isValidUser = authUser;
+  const { token, uid } = await authUser.refreshToken();
 
-  if(!isValidUser){
-    throw new ApolloResponseError('Invalid User', "UNAUTHORIZED");
-  }
-
-  return { authuser: authUser };
+  return { token: token, uid: uid, success: true };
 }
 
-async function signOut(root: any, { id }, context: ContextObject) {
-
-  const authUser = await AuthUser.findOne({ where: { id: id } });
+async function signOut(root: any, {}, context: ContextObject) {
+  const authUser = context.authUser;
+  console.log(response.getHeaders());
+  const token = response.getHeader("Authorization") as string;
+  const success = await authUser.revokeToken(token);
+  if (success) {
+    response.setHeader("authorization", "");
+    response.setHeader("uid", "");
+  }
 
   return true;
 }

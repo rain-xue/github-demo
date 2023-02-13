@@ -4,11 +4,10 @@ import bcrypt = require("bcrypt");
 const DEFAULT_OPTIONS = {
   field: "password",
   rounds: 12,
-  compare: "authenticateByPassword",
 };
 
-export const useEncryptedPassword = (Model, options = DEFAULT_OPTIONS) => {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
+export const useEncryptedPassword = (Model) => {
+  const opts = { ...DEFAULT_OPTIONS };
 
   const hashField = function (instance: any) {
     try {
@@ -24,17 +23,29 @@ export const useEncryptedPassword = (Model, options = DEFAULT_OPTIONS) => {
       const plainValue = instance[changedKey];
       if (!plainValue) return;
 
-      const salt = bcrypt.genSaltSync(opts.rounds);
-      const hashedValue = bcrypt.hashSync(plainValue, salt);
+      const hashedValue = encrptedField(plainValue);
       instance[changedKey] = hashedValue;
     } catch (err) {
       throw new ValidationError(err.message, [err]);
     }
   };
 
-  Model.prototype[opts.compare] = function (plainValue) {
-    return bcrypt.compareSync(plainValue, this._previousDataValues[opts.field]);
-  };
+  // Model.prototype[opts.compare] = function (plainValue) {
+  // return bcrypt.compareSync(plainValue, this._previousDataValues[opts.field]);
+  // };
 
   Model.addHook("beforeSave", hashField);
 };
+
+export function verifyPassword(
+  plainValue: string,
+  originValue: string
+): boolean {
+  return bcrypt.compareSync(plainValue, originValue);
+}
+
+export function encrptedField(field: string): string {
+  const salt = bcrypt.genSaltSync(DEFAULT_OPTIONS.rounds);
+  const hashedValue = bcrypt.hashSync(field, salt);
+  return hashedValue;
+}

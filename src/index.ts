@@ -1,18 +1,20 @@
-import Redis from 'ioredis';
-import express from 'express';
-import { ApolloServer } from '@apollo/server';
-import { execute, subscribe } from 'graphql';
-import { RedisPubSub } from 'graphql-redis-subscriptions';
-import { createServer } from 'http';
-import { SubscriptionServer } from 'subscriptions-transport-ws';
-import { createApplication } from 'graphql-modules';
-import { GetValidContext } from './middleware';
-import { resvuModules } from './modules';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import { expressMiddleware } from '@apollo/server/express4';
-import { initModels } from './models/init-models'
-import db from './db/db';
+import Redis from "ioredis";
+import express from "express";
+import { ApolloServer } from "@apollo/server";
+import { execute, subscribe } from "graphql";
+import { RedisPubSub } from "graphql-redis-subscriptions";
+import { createServer } from "http";
+import { SubscriptionServer } from "subscriptions-transport-ws";
+import { createApplication } from "graphql-modules";
+import { GetContext } from "./middleware";
+import { resvuModules } from "./modules";
+import cors from "cors";
+import bodyParser from "body-parser";
+import { expressMiddleware } from "@apollo/server/express4";
+import { initModels } from "./models/init-models";
+import db from "./db/db";
+import { applyMiddleware } from "graphql-middleware";
+import { allow, rule, shield } from "graphql-shield";
 
 // const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 // const REDIS_PORT: number = +process.env.REDIS_PORT || 6379;
@@ -42,12 +44,8 @@ import db from './db/db';
 //     },
 //   }),
 // });
-interface MyContext {
-  token?: string;
-}
-
 async function bootstrap() {
-  initModels(db)
+  initModels(db);
 
   const app = express();
   const httpServer = createServer(app);
@@ -55,7 +53,19 @@ async function bootstrap() {
     modules: resvuModules,
   });
 
-  const schema = application.createSchemaForApollo();
+  let schema = application.createSchemaForApollo();
+
+  const isAuthenticated = rule()(async (parent, args, ctx, info) => {
+    return ctx.authUser;
+  });
+
+  schema = applyMiddleware(
+    schema,
+    shield({
+      Query: { "*": isAuthenticated },
+      Mutation: { "*": isAuthenticated, signIn: allow, signUp: allow },
+    })
+  );
 
   const subscriptionServer = SubscriptionServer.create(
     {
@@ -63,22 +73,22 @@ async function bootstrap() {
       execute,
       subscribe,
       async onConnect(connectionParams) {
-        const token = connectionParams['Authorization'];
-        const userId = connectionParams['user'] as string;
-        if (!token) {
+        // const token = connectionParams["Authorization"];
+        // const userId = connectionParams["user"] as string;
+        if (!connectionParams) {
           return;
         }
-        const context = await GetValidContext(token, userId);
+        const context = await GetContext(connectionParams);
         return context;
       },
     },
     {
       server: httpServer,
-      path: '/graphql',
+      path: "/graphql",
     }
   );
 
-  const server = new ApolloServer<MyContext>({
+  const server = new ApolloServer({
     schema,
     plugins: [
       {
@@ -96,14 +106,19 @@ async function bootstrap() {
   await server.start();
 
   app.use(
-    '/',
+    "/",
     cors<cors.CorsRequest>(),
     bodyParser.json(),
     // expressMiddleware accepts the same arguments:
     // an Apollo Server instance and optional configuration options
     expressMiddleware(server, {
-      context: async ({ req }) => ({ token: req.headers.token }),
-    }),
+      context: async ({ req }) => {
+        const context: { [key: string]: any } = await GetContext({
+          headers: req.headers,
+        });
+        return context;
+      },
+    })
   );
 
   const PORT = process.env.PORT || 4000;

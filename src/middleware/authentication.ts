@@ -1,19 +1,21 @@
 import { Op } from "sequelize";
 import { AuthUser } from "../models";
+import { response } from "express";
 
 export async function validateToken(args: {
-  client: string;
   token: string;
   uid: string;
 }): Promise<AuthUser> {
   try {
-    const { client, token, uid } = args;
+    const { token, uid } = args;
 
-    const currentAuthUser = await AuthUser.authenticate(client, token, uid);
+    const currentAuthUser = await AuthUser.authenticate(token, uid);
 
-    if (!currentAuthUser) {
-      throw new Error("Token is invalid");
+    if (currentAuthUser) {
+      response.setHeader("authorization", token);
+      response.setHeader("uid", currentAuthUser.id);
     }
+
     return currentAuthUser;
   } catch (e) {
     throw new Error(e.message);

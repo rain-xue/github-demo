@@ -9,8 +9,9 @@ export const authusersTypeDefs = gql`
   }
 
   type AuthUserPayload {
-    success: boolean!
-    authuser: AuthUser
+    success: Boolean!
+    uid: String
+    token: String
   }
 
   input SignInInput {
@@ -20,7 +21,7 @@ export const authusersTypeDefs = gql`
 
   input SignUpInput {
     email: String!
-    password: string!
+    password: String!
   }
 
   scalar DateTime
@@ -28,7 +29,7 @@ export const authusersTypeDefs = gql`
   type Mutation {
     signUp(input: SignUpInput!): AuthUserPayload!
     signIn(input: SignInInput!): AuthUserPayload!
-    signOut(id: String!): Boolean!
+    signOut: Boolean!
   }
 
   type Query {
