@@ -1,6 +1,6 @@
-import { Op } from "sequelize";
-import { AuthUser } from "../models";
-import { response } from "express";
+import { Op } from 'sequelize';
+import { AuthUser } from '../models';
+import { response } from 'express';
 
 export async function validateToken(args: {
   token: string;
@@ -10,11 +10,6 @@ export async function validateToken(args: {
     const { token, uid } = args;
 
     const currentAuthUser = await AuthUser.authenticate(token, uid);
-
-    if (currentAuthUser) {
-      response.setHeader("authorization", token);
-      response.setHeader("uid", currentAuthUser.id);
-    }
 
     return currentAuthUser;
   } catch (e) {

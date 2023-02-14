@@ -1,4 +1,4 @@
-import { gql } from "graphql-modules";
+import { gql } from 'graphql-modules';
 
 export const authusersTypeDefs = gql`
   type AuthUser {
@@ -9,9 +9,9 @@ export const authusersTypeDefs = gql`
   }
 
   type AuthUserPayload {
-    success: Boolean!
-    uid: String
     token: String
+    uid: String
+    success: Boolean!
   }
 
   input SignInInput {
