@@ -15,6 +15,7 @@ import { initModels } from "./models/init-models";
 import db from "./db/db";
 import { applyMiddleware } from "graphql-middleware";
 import { allow, rule, shield } from "graphql-shield";
+import { ApolloResponseError } from "./utils/error-handler";
 
 // const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 // const REDIS_PORT: number = +process.env.REDIS_PORT || 6379;
@@ -56,15 +57,19 @@ export async function bootstrap() {
 
   let schema = application.createSchemaForApollo();
 
-  const isAuthenticated = rule()(async (parent, args, ctx, info) => {
-    return !!ctx.authUser;
+  const isAuthorized = rule()(async (parent, args, ctx, info) => {
+    if (ctx.authUser) {
+      return true;
+    } else {
+      return new ApolloResponseError("Not authorized", "UNAUTHORIZED");
+    }
   });
 
   schema = applyMiddleware(
     schema,
     shield({
-      Query: { "*": isAuthenticated },
-      Mutation: { "*": isAuthenticated, signIn: allow, signUp: allow },
+      Query: { "*": isAuthorized },
+      Mutation: { "*": isAuthorized, signIn: allow, signUp: allow },
     })
   );
 
