@@ -1,29 +1,29 @@
-import { validate } from 'graphql';
-import * as Sequelize from 'sequelize';
-import { DataTypes, Model, Optional, Op, ModelStatic } from 'sequelize';
-import { Account } from './Account';
-import { verifyPassword, useEncryptedPassword } from './concerns/passwordable';
-import { User, UserId } from './User';
-import jwt from 'jsonwebtoken';
-import bcrypt = require('bcrypt');
+import { validate } from "graphql";
+import * as Sequelize from "sequelize";
+import { DataTypes, Model, Optional, Op, ModelStatic } from "sequelize";
+import { Account } from "./Account";
+import { verifyPassword, useEncryptedPassword } from "./concerns/passwordable";
+import { User, UserId } from "./User";
+import jwt from "jsonwebtoken";
 
 export interface AuthUserAttributes {
   id: number;
   email: string;
   password?: string;
-  confirmed: boolean;
-  tokens: string[];
+  confirmed?: boolean;
+  tokens?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type AuthUserPk = 'id';
+export type AuthUserPk = "id";
 export type AuthUserId = AuthUser[AuthUserPk];
 export type AuthUserOptionalAttributes =
-  | 'id'
-  | 'password'
-  | 'createdAt'
-  | 'updatedAt';
+  | "id"
+  | "email"
+  | "password"
+  | "createdAt"
+  | "updatedAt";
 export type AuthUserCreationAttributes = Optional<
   AuthUserAttributes,
   AuthUserOptionalAttributes
@@ -36,8 +36,8 @@ export class AuthUser
   id!: number;
   email!: string;
   password?: string;
-  confirmed!: boolean;
-  tokens: string[];
+  confirmed?: boolean;
+  tokens?: string[];
   createdAt!: Date;
   updatedAt!: Date;
 
@@ -54,7 +54,7 @@ export class AuthUser
   hasUsers!: Sequelize.HasManyHasAssociationsMixin<User, UserId>;
   countUsers!: Sequelize.HasManyCountAssociationsMixin;
 
-  static async authenticate(token: string, uid: string): Promise<AuthUser> {
+  static async authenticate(token: string, uid: number): Promise<AuthUser> {
     const authUser = await AuthUser.findOne({
       where: {
         id: { [Sequelize.Op.eq]: uid },
@@ -78,22 +78,22 @@ export class AuthUser
     });
 
     if (!authUser) {
-      throw new Error('Email or password is invalid');
+      throw new Error("Email or password is invalid");
     }
 
     const validPassword = verifyPassword(password, authUser.password);
 
     if (!validPassword) {
-      throw new Error('Email or password is invalid');
+      throw new Error("Email or password is invalid");
     }
 
     return authUser;
   }
 
   static associate(models: { [key: string]: ModelStatic<Model> }) {
-    models['AuthUser'].hasMany(models['User']);
-    models['AuthUser'].belongsToMany(models['Account'], {
-      through: models['User'],
+    models["AuthUser"].hasMany(models["User"]);
+    models["AuthUser"].belongsToMany(models["Account"], {
+      through: models["User"],
     });
   }
 
@@ -113,7 +113,7 @@ export class AuthUser
             notNull: true,
             notEmpty: true,
             isEmail: {
-              msg: 'Must be a email',
+              msg: "Must be a email",
             },
           },
         },
@@ -149,8 +149,8 @@ export class AuthUser
       },
       {
         sequelize,
-        tableName: 'AuthUsers',
-        schema: 'public',
+        tableName: "AuthUsers",
+        schema: "public",
         timestamps: true,
       }
     );
@@ -165,7 +165,7 @@ export class AuthUser
     uid: number;
   }> {
     //example
-    const newToken = jwt.sign({ id: this.id }, 'secret');
+    const newToken = jwt.sign({ id: this.id }, "secret");
     const uid = this.id;
     const newTokens = this.tokens.concat(newToken);
 

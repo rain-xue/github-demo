@@ -1,10 +1,10 @@
-import { Op } from 'sequelize';
-import { AuthUser } from '../models';
-import { response } from 'express';
+import { Op } from "sequelize";
+import { AuthUser } from "../models";
+import { response } from "express";
 
 export async function validateToken(args: {
   token: string;
-  uid: string;
+  uid: number;
 }): Promise<AuthUser> {
   try {
     const { token, uid } = args;

@@ -1,8 +1,9 @@
-import { AuthUser } from '../models';
-import { Request, Response } from 'express';
+import { AuthUser } from "../models";
+import { Request, Response } from "express";
+import { CustomRequest } from "./check-context";
 
 export interface ContextObject {
-  authUser: AuthUser;
-  req: Request;
-  res: Response;
+  authUser?: AuthUser;
+  req?: CustomRequest;
+  res?: Response;
 }

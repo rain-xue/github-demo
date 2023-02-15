@@ -1,23 +1,30 @@
-import { ApolloResponseError } from '../utils/error-handler';
-import { ContextObject } from './context';
-import { validateToken } from './authentication';
-import { IncomingHttpHeaders } from 'http';
-import { Request, Response } from 'express';
+import { ApolloResponseError } from "../utils/error-handler";
+import { ContextObject } from "./context";
+import { validateToken } from "./authentication";
+import { IncomingHttpHeaders } from "http";
+import { Request, Response } from "express";
+
+export interface CustomRequest extends Request {
+  headers: IncomingHttpHeaders & {
+    token?: string;
+    uid?: number;
+  };
+}
 
 export async function GetContext(args: {
-  req: Request;
+  req: CustomRequest;
   res: Response;
 }): Promise<ContextObject> {
   try {
     const { req, res } = args;
 
-    const token = req.headers['token'] as string;
-    const uid = req.headers['uid'] as string;
+    const token = req.headers["token"] as string;
+    const uid = req.headers["uid"] as string;
 
     let authUser = null;
 
     if (token) {
-      const bearerToken = token.replace('Bearer ', '');
+      const bearerToken = token.replace("Bearer ", "");
       authUser = await validateToken({
         token: bearerToken,
         uid: uid,
@@ -26,6 +33,6 @@ export async function GetContext(args: {
 
     return { authUser, req, res };
   } catch (e) {
-    throw new ApolloResponseError(e.message, 'AUTHENTICATION_ERROR');
+    throw new ApolloResponseError(e.message, "AUTHENTICATION_ERROR");
   }
 }

@@ -1,5 +1,5 @@
 import { ValidationError } from "sequelize";
-import bcrypt = require("bcrypt");
+import bcrypt from "bcrypt";
 
 const DEFAULT_OPTIONS = {
   field: "password",
