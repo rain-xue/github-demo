@@ -14,6 +14,11 @@ export const authusersTypeDefs = gql`
     success: Boolean!
   }
 
+  type AuthUserQueryResponse {
+    authUser: AuthUser
+    success: Boolean
+  }
+
   input SignInInput {
     email: String!
     password: String!
@@ -33,6 +38,6 @@ export const authusersTypeDefs = gql`
   }
 
   type Query {
-    _dummy: String
+    getAuthUser: AuthUserQueryResponse!
   }
 `;

@@ -3,14 +3,33 @@ import { SignInInput, SignUpInput } from '../../generated/graphql-types';
 import { ContextObject } from '../../middleware/context';
 import { ApolloResponseError } from '../../utils/error-handler';
 
+interface AuthUserQueryResponse {
+  authUser: AuthUser;
+  success: boolean;
+}
+
 export const authUsersResolvers = {
   Mutation: {
     signIn,
     signOut,
     signUp,
   },
-  Query: {},
+  Query: {
+    getAuthUser,
+  },
 };
+
+async function getAuthUser(
+  root: any,
+  {},
+  context: ContextObject
+): Promise<AuthUserQueryResponse> {
+  try {
+    return { authUser: context.authUser, success: true };
+  } catch (e) {
+    throw new ApolloResponseError(e.message);
+  }
+}
 
 async function signUp(root: any, { input }, context: ContextObject) {
   try {
