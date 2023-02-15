@@ -18,8 +18,8 @@ export async function GetContext(args: {
   try {
     const { req, res } = args;
 
-    const token = req.headers["token"] as string;
-    const uid = req.headers["uid"] as string;
+    const token = req.headers["token"];
+    const uid = req.headers["uid"];
 
     let authUser = null;
 
