@@ -16,14 +16,14 @@ export const up: Migration = async ({ context: sequelize }) => {
             { transaction: t }
           );
 
-          await user1.refreshToken();
+          await user1.generateToken();
 
           const user2 = await AuthUser.create(
             { email: "test2@test.com", password: "qweqwe" },
             { transaction: t }
           );
 
-          await user2.refreshToken();
+          await user2.generateToken();
 
           return [user1, user2];
         }

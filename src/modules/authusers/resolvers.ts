@@ -44,7 +44,7 @@ async function signUp(root: any, { input }, context: ContextObject) {
       throw new ApolloResponseError("Invalid User", "UNAUTHORIZED");
     }
 
-    const { token, uid } = await authUser.refreshToken();
+    const { token, uid } = await authUser.generateToken();
 
     return { token: "Bearer " + token, uid: uid, success: true };
   } catch (e) {
@@ -61,7 +61,7 @@ async function signIn(root: any, { input }, context: ContextObject) {
     throw new ApolloResponseError("Invalid User", "UNAUTHORIZED");
   }
 
-  const { token, uid } = await authUser.refreshToken();
+  const { token, uid } = await authUser.generateToken();
 
   return { token: "Bearer " + token, uid: uid, success: true };
 }

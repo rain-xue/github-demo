@@ -54,42 +54,6 @@ export class AuthUser
   hasUsers!: Sequelize.HasManyHasAssociationsMixin<User, UserId>;
   countUsers!: Sequelize.HasManyCountAssociationsMixin;
 
-  static async authenticate(token: string, uid: number): Promise<AuthUser> {
-    const authUser = await AuthUser.findOne({
-      where: {
-        id: { [Sequelize.Op.eq]: uid },
-        tokens: {
-          [Sequelize.Op.contains]: [token],
-        },
-      },
-    });
-
-    return authUser;
-  }
-
-  static async authenticateByPassword(
-    email: string,
-    password: string
-  ): Promise<AuthUser> {
-    const authUser = await AuthUser.findOne({
-      where: {
-        email: email,
-      },
-    });
-
-    if (!authUser) {
-      throw new Error("Email or password is invalid");
-    }
-
-    const validPassword = verifyPassword(password, authUser.password);
-
-    if (!validPassword) {
-      throw new Error("Email or password is invalid");
-    }
-
-    return authUser;
-  }
-
   static associate(models: { [key: string]: ModelStatic<Model> }) {
     models["AuthUser"].hasMany(models["User"]);
     models["AuthUser"].belongsToMany(models["Account"], {
@@ -111,7 +75,6 @@ export class AuthUser
           allowNull: false,
           validate: {
             notNull: true,
-            notEmpty: true,
             isEmail: {
               msg: "Must be a email",
             },
@@ -121,7 +84,6 @@ export class AuthUser
           type: DataTypes.STRING(255),
           allowNull: false,
           validate: {
-            is: /^[a-z]+$/i,
             notNull: true,
             notEmpty: true,
           },
@@ -160,7 +122,43 @@ export class AuthUser
     return AuthUser;
   }
 
-  async refreshToken(): Promise<{
+  static async authenticate(token: string, uid: number): Promise<AuthUser> {
+    const authUser = await AuthUser.findOne({
+      where: {
+        id: { [Sequelize.Op.eq]: uid },
+        tokens: {
+          [Sequelize.Op.contains]: [token],
+        },
+      },
+    });
+
+    return authUser;
+  }
+
+  static async authenticateByPassword(
+    email: string,
+    password: string
+  ): Promise<AuthUser> {
+    const authUser = await AuthUser.findOne({
+      where: {
+        email: email,
+      },
+    });
+
+    if (!authUser) {
+      throw new Error("Email or password is invalid");
+    }
+
+    const validPassword = verifyPassword(password, authUser.password);
+
+    if (!validPassword) {
+      throw new Error("Email or password is invalid");
+    }
+
+    return authUser;
+  }
+
+  async generateToken(): Promise<{
     token: string;
     uid: number;
   }> {
