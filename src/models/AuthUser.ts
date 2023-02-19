@@ -1,10 +1,10 @@
-import { validate } from "graphql";
-import * as Sequelize from "sequelize";
-import { DataTypes, Model, Optional, Op, ModelStatic } from "sequelize";
-import { Account } from "./Account";
-import { verifyPassword, useEncryptedPassword } from "./concerns/passwordable";
-import { User, UserId } from "./User";
-import jwt from "jsonwebtoken";
+import { validate } from 'graphql';
+import * as Sequelize from 'sequelize';
+import { DataTypes, Model, Optional, Op, ModelStatic } from 'sequelize';
+import { Account } from './Account';
+import { verifyPassword, useEncryptedPassword } from './concerns/passwordable';
+import { User, UserId } from './User';
+import jwt from 'jsonwebtoken';
 
 export interface AuthUserAttributes {
   id: number;
@@ -16,14 +16,14 @@ export interface AuthUserAttributes {
   updatedAt: Date;
 }
 
-export type AuthUserPk = "id";
+export type AuthUserPk = 'id';
 export type AuthUserId = AuthUser[AuthUserPk];
 export type AuthUserOptionalAttributes =
-  | "id"
-  | "email"
-  | "password"
-  | "createdAt"
-  | "updatedAt";
+  | 'id'
+  | 'email'
+  | 'password'
+  | 'createdAt'
+  | 'updatedAt';
 export type AuthUserCreationAttributes = Optional<
   AuthUserAttributes,
   AuthUserOptionalAttributes
@@ -55,9 +55,9 @@ export class AuthUser
   countUsers!: Sequelize.HasManyCountAssociationsMixin;
 
   static associate(models: { [key: string]: ModelStatic<Model> }) {
-    models["AuthUser"].hasMany(models["User"]);
-    models["AuthUser"].belongsToMany(models["Account"], {
-      through: models["User"],
+    models['AuthUser'].hasMany(models['User']);
+    models['AuthUser'].belongsToMany(models['Account'], {
+      through: models['User'],
     });
   }
 
@@ -76,7 +76,7 @@ export class AuthUser
           validate: {
             notNull: true,
             isEmail: {
-              msg: "Must be a email",
+              msg: 'Must be a email',
             },
           },
         },
@@ -111,11 +111,15 @@ export class AuthUser
       },
       {
         sequelize,
-        tableName: "AuthUsers",
-        schema: "public",
+        tableName: 'AuthUsers',
+        schema: 'public',
         timestamps: true,
       }
     );
+
+    AuthUser.addHook('afterCreate', 'send invitation email', () => {
+      //send invitation email
+    });
 
     useEncryptedPassword(AuthUser);
 
@@ -146,13 +150,13 @@ export class AuthUser
     });
 
     if (!authUser) {
-      throw new Error("Email or password is invalid");
+      throw new Error('Email or password is invalid');
     }
 
     const validPassword = verifyPassword(password, authUser.password);
 
     if (!validPassword) {
-      throw new Error("Email or password is invalid");
+      throw new Error('Email or password is invalid');
     }
 
     return authUser;
@@ -163,7 +167,7 @@ export class AuthUser
     uid: number;
   }> {
     //example
-    const newToken = jwt.sign({ id: this.id }, "secret");
+    const newToken = jwt.sign({ id: this.id }, 'secret');
     const uid = this.id;
     const newTokens = this.tokens.concat(newToken);
 
@@ -173,7 +177,6 @@ export class AuthUser
   }
 
   async revokeToken(removedToken: string): Promise<boolean> {
-    console.log(removedToken);
     const newTokens = this.tokens.filter((token) => token != removedToken);
     await this.update({ tokens: newTokens });
     return true;
