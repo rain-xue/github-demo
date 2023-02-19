@@ -1,18 +1,21 @@
-import { Sequelize, Options } from 'sequelize'
+import { Sequelize, Options } from "sequelize";
 
-const env = process.env.NODE_ENV || 'development'
+const prodConfigs = require("./config/db.config.production.json");
+const testConfigs = require("./config/db.config.test.json");
+const devConfigs = require("./config/db.config.dev.json");
 
-const configs = {
-  dialect: "postgres",
-  database: "resvu_api_dev",
-  username: "postgres",
-  password: "postgres",
-  host: "localhost",
-  port: 5432
+const env = process.env.NODE_ENV || "development";
+
+let configs = {} as { [key: string]: Options };
+
+if (env === "production") {
+  configs = prodConfigs;
+} else if (env === "test") {
+  configs = testConfigs;
+} else {
+  configs = devConfigs;
 }
 
-const config = (configs as {[key: string]: Options})
+const db: Sequelize = new Sequelize(configs);
 
-const db: Sequelize = new Sequelize(config)
-
-export default db
+export default db;
